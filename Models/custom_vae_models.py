@@ -51,12 +51,42 @@ class Std_Decoder_Logit_Normal(tfk.Model):  # Décodeur
         x = self.ind_logit_normal(x)
         return x
 
+class Std_Decoder_Beta(tfk.Model):
+    def __init__(self, input_dim, LAYER_1_N, LAYER_2_N):
+        super(Std_Decoder_Beta,self).__init__()
+        self.K = input_dim
+        self.dense1 = tfkl.Dense(units = LAYER_2_N, use_bias=True, activation='relu')
+        self.dense2 = tfkl.Dense(units = LAYER_1_N, use_bias=True, activation='relu')
+        self.param_layer = tfkl.Dense(2*self.K) #alphas and betas of Beta distribution
+        self.indep_Beta_distribution = tfpl.DistributionLambda(
+            lambda params : tfd.Independent(
+                tfd.Beta(concentration1 = 1e-3 + tf.nn.softplus(params[...,:self.K]), concentration0 = 1e-3 + tf.nn.softplus(params[...,self.K:]))
+            ),
+            name = 'beta'
+        )
+
+    def call(self, inputs):
+        x = self.dense1(inputs)
+        x = self.dense2(x)
+        x = self.param_layer(x)
+        x = self.indep_Beta_distribution(x)
+        return x
+
 
 class Std_VAE_LogitNormal(tfk.Model):
     def __init__(self, latent_dim, input_dim, LAYER_1_N, LAYER_2_N):
         super(Std_VAE_LogitNormal, self).__init__()
         self.encoder = Std_Encoder(latent_dim, LAYER_1_N, LAYER_2_N)
         self.decoder = Std_Decoder_Logit_Normal(input_dim,LAYER_1_N, LAYER_2_N)
+
+    def call(self, inputs):
+        return self.decoder(self.encoder(inputs))
+
+class Std_VAE_Beta(tfk.Model):
+    def __init__(self, latent_dim, input_dim, LAYER_1_N, LAYER_2_N):
+        super(Std_VAE_Beta, self).__init__()
+        self.encoder = Std_Encoder(latent_dim, LAYER_1_N, LAYER_2_N)
+        self.decoder = Std_Decoder_Beta(input_dim,LAYER_1_N, LAYER_2_N)
 
     def call(self, inputs):
         return self.decoder(self.encoder(inputs))

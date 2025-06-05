@@ -27,7 +27,7 @@ plt.scatter(training_data[:5000,0],training_data[:5000,1])
 plt.title('Training data')
 plt.show()
 
-from vae_models import *
+from Models.vae_models import *
 vae = Std_VAE()
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
 

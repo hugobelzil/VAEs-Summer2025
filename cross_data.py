@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vae_models import *
+from Models.vae_models import *
 
 # goal : generate data that looks like a cross in 2D, see if better results than half-circle
 np.random.seed(42)

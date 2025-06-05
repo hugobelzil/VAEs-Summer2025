@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.distributions.copula.api import GaussianCopula
-from vae_models import *
+from Models.vae_models import *
 
 np.random.seed(0)
 

@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.distributions.copula.api import GaussianCopula
 
-from Models.custom_vae_models import *
+#from Models.custom_vae_models import *
+from Models.TruncatedNormalVAE import *
 
 corr = np.array([[1, 0.8],
                  [0.8, 1]])
@@ -16,21 +17,21 @@ plt.title('Training data from Gaussian Copula')
 plt.show()
 
 # Creating the VAE and fitting
-vae = Std_VAE_LogitNormal(latent_dim = 12, input_dim=2, LAYER_1_N=8, LAYER_2_N=8)
+vae = Std_VAE_TruncatedNormal(latent_dim = 12, input_dim=2, LAYER_1_N=8, LAYER_2_N=12, KL_WEIGHT=0.1)
 
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
 
-vae.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),#sur Windows tf.optimizers.Adam
+vae.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),#sur Windows tf.optimizers.Adam
             loss=negative_log_likelihood)
 
 vae.fit(data[:10000,:],data[:10000,:],
         #validation_data=(eval_dataset,eval_dataset),
         batch_size=32,
-        epochs=100,
+        epochs=70,
         #callbacks = [model_checkpoint_callback]
        )
 
-N_samples = 5000
+N_samples = 7000
 prior_samples = vae.encoder.prior.sample(N_samples)
 samples_vae = vae.decoder(prior_samples).sample()
 plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')
@@ -42,10 +43,3 @@ np.save('samples_vae_gaussian_2d.npy',samples_vae.numpy())
 
 ### THRESHOLD
 
-samples_vae = vae(copula.rvs(N_samples)).sample()
-print(samples_vae)
-plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')
-plt.show()
-plt.hist(samples_vae[:,0], bins=100)
-plt.show()
-print(np.min(samples_vae[:,1]), np.max(samples_vae[:,1]))

@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 import warnings
-
+import numpy as np
 warnings.filterwarnings("ignore")
 tfk = tf.keras
 tfkl = tf.keras.layers
@@ -35,14 +35,15 @@ class Std_Encoder_Beta(tfk.Model):  # Encodeur
     def __init__(self, encoded_size, LAYER_1_N, LAYER_2_N, KL_WEIGHT):
         super(Std_Encoder_Beta, self).__init__()
         self.encoded_size = encoded_size  # taille de l'espace latent
-        self.prior = tfd.Independent(distribution = tfd.Beta(concentration1 = 1.05*np.ones(self.encoded_size),
-                                                             concentration0 = 1.05*np.ones(self.encoded_size)))
+        self.prior = tfd.Independent(distribution = tfd.Beta(concentration1 = 1.05*np.ones(self.encoded_size, dtype=np.float32),
+                                                             concentration0 = 1.05*np.ones(self.encoded_size, dtype=np.float32)),
+                                     reinterpreted_batch_ndims = 1)
         self.dense1 = tfkl.Dense(units=LAYER_1_N, activation='relu')
         self.dense2 = tfkl.Dense(units=LAYER_2_N, activation='relu')
         self.dense3 = tfkl.Dense(2*self.encoded_size)
         self.ind_beta = tfpl.DistributionLambda(
             lambda params: tfd.Independent(
-                tfd.Beta(concentration1=params[..., :self.K], concentration0=1e-3 + tf.nn.softplus(params[..., self.K:])),
+                tfd.Beta(concentration1=1e-2 + tf.nn.softplus(params[..., :self.encoded_size]), concentration0=1e-2 + tf.nn.softplus(params[..., self.encoded_size:])),
                 reinterpreted_batch_ndims=1),
             activity_regularizer=tfpl.KLDivergenceRegularizer(self.prior, weight=KL_WEIGHT),
             name='beta_encoded_parameters'
@@ -85,7 +86,8 @@ class Std_Decoder_Beta(tfk.Model):
         self.param_layer = tfkl.Dense(2*self.K) #alphas and betas of Beta distribution
         self.indep_Beta_distribution = tfpl.DistributionLambda(
             lambda params : tfd.Independent(
-                tfd.Beta(concentration1 = 1e-3 + tf.nn.softplus(params[...,:self.K]), concentration0 = 1e-3 + tf.nn.softplus(params[...,self.K:]))
+                tfd.Beta(concentration1 = 0.2 + tf.nn.softplus(params[...,:self.K]), concentration0 = 0.2 + tf.nn.softplus(params[...,self.K:])),
+                reinterpreted_batch_ndims=1
             ),
             name = 'beta'
         )
@@ -109,9 +111,9 @@ class Std_VAE_LogitNormal(tfk.Model):
 
 ####
 class Std_VAE_Beta(tfk.Model):
-    def __init__(self, latent_dim, input_dim, LAYER_1_N, LAYER_2_N):
+    def __init__(self, latent_dim, input_dim, LAYER_1_N, LAYER_2_N, KL_WEIGHT):
         super(Std_VAE_Beta, self).__init__()
-        self.encoder = Std_Encoder(latent_dim, LAYER_1_N, LAYER_2_N)
+        self.encoder = Std_Encoder_Beta(latent_dim, LAYER_1_N, LAYER_2_N, KL_WEIGHT)
         self.decoder = Std_Decoder_Beta(input_dim,LAYER_1_N, LAYER_2_N)
 
     def call(self, inputs):

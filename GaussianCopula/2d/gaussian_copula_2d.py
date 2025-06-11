@@ -10,7 +10,7 @@ from Models.LogitNormalVAE import *
 corr = np.array([[1, 0.8],
                  [0.8, 1]])
 copula = GaussianCopula(corr = corr)
-data = copula.rvs(nobs = 11000)
+data = copula.rvs(nobs = 20000)
 np.save('training_data_gaussian_2d.npy',data)
 
 # Scatter plot of the training data we gathered
@@ -26,14 +26,14 @@ negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
 vae.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),#sur Windows tf.optimizers.Adam
             loss=negative_log_likelihood)
 
-vae.fit(data[:10000,:],data[:10000,:],
+vae.fit(data[:20000,:],data[:20000,:],
         #validation_data=(eval_dataset,eval_dataset),
         batch_size=32,
-        epochs=40,
+        epochs=60,
         #callbacks = [model_checkpoint_callback]
        )
 
-N_samples = 7000
+N_samples = 12000
 prior_samples = vae.encoder.prior.sample(N_samples)
 samples_vae = vae.decoder(prior_samples).sample()
 plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')

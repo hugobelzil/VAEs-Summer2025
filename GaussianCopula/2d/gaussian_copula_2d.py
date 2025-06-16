@@ -9,6 +9,7 @@ from Models.LogitNormalVAE import *
 
 corr = np.array([[1, 0.8],
                  [0.8, 1]])
+
 copula = GaussianCopula(corr = corr)
 data = copula.rvs(nobs = 20000)
 np.save('training_data_gaussian_2d.npy',data)
@@ -19,7 +20,8 @@ plt.title('Training data from Gaussian Copula')
 plt.show()
 
 # Creating the VAE and fitting
-vae = Std_VAE_LogitNormal(latent_dim = 12, input_dim=2, LAYER_1_N=8, LAYER_2_N=12, KL_WEIGHT=0.1)
+vae = Std_VAE_LogitNormal(latent_dim = 12
+                          , input_dim=2, LAYER_1_N=8, LAYER_2_N=12, KL_WEIGHT=0.17)
 
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
 
@@ -28,7 +30,7 @@ vae.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),#sur Windows 
 
 vae.fit(data[:20000,:],data[:20000,:],
         #validation_data=(eval_dataset,eval_dataset),
-        batch_size=32,
+        batch_size=64,
         epochs=60,
         #callbacks = [model_checkpoint_callback]
        )

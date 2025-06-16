@@ -10,8 +10,8 @@ plt.title('Husler Reis Samples')
 plt.show()
 
 # INITIALIZING THE VAE
-vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
-                          LAYER_2_N =12, KL_WEIGHT=0.1)
+vae = Std_VAE_LogitNormal(latent_dim=4, input_dim = 2, LAYER_1_N=10,
+                          LAYER_2_N = 12, KL_WEIGHT=0.1)
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
 
 vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),

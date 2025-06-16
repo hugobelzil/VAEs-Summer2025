@@ -17,8 +17,8 @@ class Std_Encoder_Normal(tfk.Model):  # Encodeur
         super(Std_Encoder_Normal, self).__init__()
         self.encoded_size = encoded_size  # taille de l'espace latent
         #self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros(self.encoded_size))
-        self.covariance_matrix = 0.5*tf.eye(encoded_size, dtype=tf.float32)
-        self.covariance_matrix += 0.5*tf.ones((encoded_size, encoded_size), dtype=tf.float32)
+        self.covariance_matrix = 0.3*tf.eye(encoded_size, dtype=tf.float32)
+        self.covariance_matrix += 0.7*tf.ones((encoded_size, encoded_size), dtype=tf.float32)
         self.prior = tfd.MultivariateNormalFullCovariance(covariance_matrix=self.covariance_matrix)
         self.dense1 = tfkl.Dense(units = LAYER_1_N, activation='leaky_relu')
         self.dense2 = tfkl.Dense(units = LAYER_2_N, activation='leaky_relu')

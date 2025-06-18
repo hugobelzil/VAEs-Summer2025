@@ -13,6 +13,7 @@ plt.show()
 vae = Std_VAE_LogitNormal(latent_dim=4, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
+#+ sigmoid(rv.x.loc + rv.x.scale^2.sample().reorganize - rank_unif()^2)
 
 vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
             loss=negative_log_likelihood)

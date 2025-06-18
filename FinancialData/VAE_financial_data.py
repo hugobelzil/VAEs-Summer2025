@@ -27,6 +27,6 @@ samples_vae = vae.decoder(prior_samples).sample()
 plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')
 plt.title('First 2 components of the sampled data from the VAE-reproduced distribution')
 plt.show()
-np.save("data\vae_samples.npy", samples_vae)
+np.save("data\samples_vae.npy", samples_vae)
 print(samples_vae.shape)
 

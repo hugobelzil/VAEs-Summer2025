@@ -11,26 +11,35 @@ tfd = tfp.distributions
 
 # MULTIVARIATE GAUSSIAN ENCODER AND GAUSSIAN PRIOR
 
-class Std_Encoder_Normal(tfk.Model):  # Encodeur
+class Std_Encoder_LogitNormal(tfk.Model):  # Encodeur
 
     def __init__(self, encoded_size, LAYER_1_N, LAYER_2_N, KL_WEIGHT):
-        super(Std_Encoder_Normal, self).__init__()
+        super(Std_Encoder_LogitNormal, self).__init__()
         self.encoded_size = encoded_size  # taille de l'espace latent
         #self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros(self.encoded_size))
-        self.covariance_matrix = 0.3*tf.eye(encoded_size, dtype=tf.float32)
-        self.covariance_matrix += 0.7*tf.ones((encoded_size, encoded_size), dtype=tf.float32)
-        self.prior = tfd.MultivariateNormalFullCovariance(covariance_matrix=self.covariance_matrix)
+        #self.covariance_matrix = 0.3*tf.eye(encoded_size, dtype=tf.float32)
+        #self.covariance_matrix += 0.7*tf.ones((encoded_size, encoded_size), dtype=tf.float32)
+        #self.prior = tfd.MultivariateNormalFullCovariance(covariance_matrix=self.covariance_matrix)
+        self.prior = tfd.Independent(tfd.LogitNormal(loc=tf.zeros(encoded_size), scale=tf.ones(encoded_size)))
         self.dense1 = tfkl.Dense(units = LAYER_1_N, activation='leaky_relu')
         self.dense2 = tfkl.Dense(units = LAYER_2_N, activation='leaky_relu')
         self.dense3 = tfkl.Dense(tfpl.IndependentNormal.params_size(self.encoded_size))
-        self.ind_norm1 = tfpl.IndependentNormal(self.encoded_size,
-                                                activity_regularizer=tfpl.KLDivergenceRegularizer(self.prior,
-                                                                                                  weight=KL_WEIGHT))
+        self.ind_logit_normal = tfpl.DistributionLambda(
+            lambda params: tfd.Independent(
+                tfd.LogitNormal(
+                    loc=params[..., :encoded_size],
+                    scale=1e-3 + tf.nn.softplus(params[..., encoded_size:])
+                ),
+                reinterpreted_batch_ndims=1
+            ),
+            activity_regularizer=tfpl.KLDivergenceRegularizer(self.prior, weight=KL_WEIGHT)
+        )
+
     def call(self, inputs):
         x = self.dense1(inputs)
         x = self.dense2(x)
         x = self.dense3(x)
-        x = self.ind_norm1(x)
+        x = self.ind_logit_normal(x)
         return x
 
 class Std_Decoder_Logit_Normal(tfk.Model):  # Décodeur

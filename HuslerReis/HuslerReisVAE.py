@@ -1,7 +1,7 @@
-from Models.TruncatedNormalVAE import *
 import numpy as np
 import matplotlib.pyplot as plt
-plt.style.use(['science','grid'])
+from Models.TruncatedNormalVAE import *
+from IPython.display import clear_output
 
 # IMPORTING SAMPLED DATA FROM HR COPULA
 dataHR =  np.load('husler_reiss_samples.npy')
@@ -40,6 +40,25 @@ def custom_loss(x, rv_x):
     penalty = uniformity_penalty(rv_x, n_samples=64)
     return nll + 0.001*penalty
 
+#DISPLAY FOR DYNAMIC PLOTTING OF THE LOSS FUNCTION
+class LiveLossPlot(tf.keras.callbacks.Callback):
+    def on_train_begin(self, logs = None):
+        self.train_losses = []
+        self.val_losses = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.train_losses.append(logs["loss"])
+        self.val_losses.append(logs.get("val_loss"))
+        clear_output(wait=True)
+        plt.plot(self.train_losses, label="Train Loss")
+        plt.plot(self.val_losses, label="Val Loss")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss (ELBO)")
+        plt.legend()
+        plt.title("Training and Validation Loss Live Progress")
+        plt.grid(True)
+        plt.show()
+
 # INITIALIZING THE VAE
 vae = Std_VAE_TruncatedNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
@@ -51,7 +70,7 @@ vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
 
 # TRAINING THE VAE
 vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-        batch_size=32, epochs=20) #150 epochs de base
+        batch_size=32, epochs=300, callbacks=[LiveLossPlot()]) #150 epochs de base
 
 #PLOT OF SAMPLED DATA
 N_samples = 8000
@@ -62,12 +81,15 @@ plt.title('Simulated data from a HR copula by the VAE')
 plt.show()
 
 #PLOT OF THE MARGINS
-plt.hist(samples_vae[:,0], bins='auto',edgecolor='black',density=True)
-plt.axline((0,1),(1,1), color = 'black')
-plt.title('Histogram of first marginal Husler Reis Samples')
-plt.show()
+plot_margins = True
 
-plt.hist(samples_vae[:,1], bins='auto',edgecolor='blue',density=True)
-plt.axline((0,1),(1,1), color = 'black')
-plt.title('Histogram of second marginal Husler Reis Samples')
-plt.show()
+if plot_margins:
+    plt.hist(samples_vae[:, 0], bins='auto', edgecolor='black', density=True)
+    plt.axline((0, 1), (1, 1), color='black')
+    plt.title('Histogram of first marginal Husler Reis Samples')
+    plt.show()
+
+    plt.hist(samples_vae[:, 1], bins='auto', edgecolor='black', density=True)
+    plt.axline((0, 1), (1, 1), color='black')
+    plt.title('Histogram of second marginal Husler Reis Samples')
+    plt.show()

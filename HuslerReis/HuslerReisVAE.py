@@ -1,4 +1,4 @@
-from Models.LogitNormalVAE import *
+from Models.TruncatedNormalVAE import *
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,15 +10,45 @@ plt.title('Husler Reis Samples')
 plt.show()
 
 # INITIALIZING THE VAE
-vae = Std_VAE_LogitNormal(latent_dim=4, input_dim = 2, LAYER_1_N=10,
-                          LAYER_2_N = 12, KL_WEIGHT=0.1)
-negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
-#+ sigmoid(rv.x.loc + rv.x.scale^2.sample().reorganize - rank_unif()^2)
+vae = Std_VAE_TruncatedNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
+                          LAYER_2_N = 12, KL_WEIGHT=0.08)
 
-vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
+
+def uniformity_penalty(rv_x, n_samples=64):
+    samples = rv_x.sample(n_samples)  # shape: (n_samples, latent_dim)
+    samples = tf.reshape(samples, (n_samples, -1))  # Ensure shape is (n_samples, latent_dim)
+
+    latent_dim = tf.shape(samples)[1]
+    uniform_grid = tf.linspace(0.0, 1.0, n_samples)
+
+    penalties = tf.TensorArray(dtype=tf.float32, size=latent_dim)
+
+    def body(i, penalties):
+        marginal = samples[:, i]                # shape: (n_samples,)
+        marginal_sorted = tf.sort(marginal)     # shape: (n_samples,)
+        penalty = tf.reduce_mean((marginal_sorted - uniform_grid) ** 2)
+        penalties = penalties.write(i, penalty)
+        return i + 1, penalties
+
+    def condition(i, penalties):
+        return i < latent_dim
+
+    i = tf.constant(0)
+    _, penalties = tf.while_loop(condition, body, [i, penalties])
+    return tf.reduce_sum(penalties.stack())
+
+
+def custom_loss(x, rv_x):
+    nll = -rv_x.log_prob(x)
+    penalty = uniformity_penalty(rv_x, n_samples=64)
+    return nll + 0.0001*penalty
+
+negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
+
+vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=4*0.001),
             loss=negative_log_likelihood)
 
-vae.fit(dataHR,dataHR, batch_size=64, epochs=150)
+vae.fit(dataHR,dataHR, batch_size=64, epochs=150) #150 epochs de base
 
 #PLOT OF SAMPLED DATA
 N_samples = 8000

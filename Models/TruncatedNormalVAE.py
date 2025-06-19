@@ -21,7 +21,7 @@ class Std_Encoder_TruncatedNormal(tfk.Model):  # Encodeur
         super(Std_Encoder_TruncatedNormal, self).__init__()
         self.encoded_size = encoded_size  # taille de l'espace latent
         self.prior = tfd.Independent(distribution = tfd.TruncatedNormal(loc = 0.5*np.ones(self.encoded_size, dtype=np.float32),
-                                                                        scale = 4*np.ones(self.encoded_size, dtype=np.float32),
+                                                                        scale = 8*np.ones(self.encoded_size, dtype=np.float32),
                                                                         low = np.zeros(self.encoded_size, dtype=np.float32),
                                                                         high = np.ones(self.encoded_size, dtype=np.float32)),
                                      reinterpreted_batch_ndims = 1)

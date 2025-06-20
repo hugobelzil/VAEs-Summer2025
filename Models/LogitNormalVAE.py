@@ -20,7 +20,8 @@ class Std_Encoder_LogitNormal(tfk.Model):  # Encodeur
         #self.covariance_matrix = 0.3*tf.eye(encoded_size, dtype=tf.float32)
         #self.covariance_matrix += 0.7*tf.ones((encoded_size, encoded_size), dtype=tf.float32)
         #self.prior = tfd.MultivariateNormalFullCovariance(covariance_matrix=self.covariance_matrix)
-        self.prior = tfd.Independent(tfd.LogitNormal(loc=tf.zeros(encoded_size), scale=tf.ones(encoded_size)))
+        self.prior = tfd.Independent(tfd.LogitNormal(loc=tf.zeros(encoded_size), scale=tf.ones(encoded_size)),
+                                     reinterpreted_batch_ndims=1)
         self.dense1 = tfkl.Dense(units = LAYER_1_N, activation='leaky_relu')
         self.dense2 = tfkl.Dense(units = LAYER_2_N, activation='leaky_relu')
         self.dense3 = tfkl.Dense(tfpl.IndependentNormal.params_size(self.encoded_size))
@@ -42,9 +43,9 @@ class Std_Encoder_LogitNormal(tfk.Model):  # Encodeur
         x = self.ind_logit_normal(x)
         return x
 
-class Std_Decoder_Logit_Normal(tfk.Model):  # Décodeur
+class Std_Decoder_LogitNormal(tfk.Model):  # Décodeur
     def __init__(self, input_dim, LAYER_1_N, LAYER_2_N):
-        super(Std_Decoder_Logit_Normal, self).__init__()
+        super(Std_Decoder_LogitNormal, self).__init__()
         self.K = input_dim
         self.dense1 = tfkl.Dense(units = LAYER_2_N, use_bias=True, activation='leaky_relu')
         self.dense2 = tfkl.Dense(units = LAYER_1_N, use_bias=True, activation='leaky_relu')
@@ -68,8 +69,8 @@ class Std_Decoder_Logit_Normal(tfk.Model):  # Décodeur
 class Std_VAE_LogitNormal(tfk.Model):
     def __init__(self, latent_dim, input_dim, LAYER_1_N, LAYER_2_N, KL_WEIGHT):
         super(Std_VAE_LogitNormal, self).__init__()
-        self.encoder = Std_Encoder_Normal(latent_dim, LAYER_1_N, LAYER_2_N, KL_WEIGHT)
-        self.decoder = Std_Decoder_Logit_Normal(input_dim,LAYER_1_N, LAYER_2_N)
+        self.encoder = Std_Encoder_LogitNormal(latent_dim, LAYER_1_N, LAYER_2_N, KL_WEIGHT)
+        self.decoder = Std_Decoder_LogitNormal(input_dim,LAYER_1_N, LAYER_2_N)
 
     def call(self, inputs):
         return self.decoder(self.encoder(inputs))

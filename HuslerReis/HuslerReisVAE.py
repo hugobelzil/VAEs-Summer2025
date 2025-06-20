@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from Models.TruncatedNormalVAE import *
+from Models.LogitNormalVAE import *
 from IPython.display import clear_output
 
 # IMPORTING SAMPLED DATA FROM HR COPULA
@@ -60,7 +61,7 @@ class LiveLossPlot(tf.keras.callbacks.Callback):
         plt.show()
 
 # INITIALIZING THE VAE
-vae = Std_VAE_TruncatedNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
+vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
 
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x) # Standard ELBO used for certain experiments
@@ -70,7 +71,7 @@ vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
 
 # TRAINING THE VAE
 vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-        batch_size=32, epochs=300, callbacks=[LiveLossPlot()]) #150 epochs de base
+        batch_size=32, epochs=100, callbacks=[LiveLossPlot()]) #150 epochs de base
 
 #PLOT OF SAMPLED DATA
 N_samples = 8000
@@ -86,10 +87,10 @@ plot_margins = True
 if plot_margins:
     plt.hist(samples_vae[:, 0], bins='auto', edgecolor='black', density=True)
     plt.axline((0, 1), (1, 1), color='black')
-    plt.title('Histogram of first marginal Husler Reis Samples')
+    plt.title('Histogram of first marginal Husler-Reis Samples')
     plt.show()
 
     plt.hist(samples_vae[:, 1], bins='auto', edgecolor='black', density=True)
     plt.axline((0, 1), (1, 1), color='black')
-    plt.title('Histogram of second marginal Husler Reis Samples')
+    plt.title('Histogram of second marginal Husler-Reis Samples')
     plt.show()

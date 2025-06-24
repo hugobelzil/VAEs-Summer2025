@@ -41,8 +41,8 @@ def custom_loss(x, rv_x):
     penalty = uniformity_penalty(rv_x, n_samples=64)
     return nll + 0.001*penalty
 
-#DISPLAY FOR DYNAMIC PLOTTING OF THE LOSS FUNCTION
-class LiveLossPlot(tf.keras.callbacks.Callback):
+#DISPLAY FOR DYNAMIC PLOTTING OF ELBO
+class LiveLossPlotELBO(tf.keras.callbacks.Callback):
     def on_train_begin(self, logs = None):
         self.train_losses = []
         self.val_losses = []
@@ -60,6 +60,65 @@ class LiveLossPlot(tf.keras.callbacks.Callback):
         plt.grid(True)
         plt.show()
 
+# DISPLAY FOR DYNAMIC PLOTTING OF THE ELBO, KL AND LL
+
+class LiveLossPlotELBOLogLikKl(tf.keras.callbacks.Callback):
+    def __init__(self, train_data, val_data):
+        super().__init__()
+        self.train_data = train_data
+        self.val_data = val_data
+
+    def on_train_begin(self, logs=None):
+        self.train_elbo = []
+        self.train_kl = []
+        self.train_loglikelihood = []
+        self.val_elbo = []
+        self.val_kl = []
+        self.val_loglikelihood = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        train_metrics = self.model.get_metrics(self.train_data)
+        val_metrics = self.model.get_metrics(self.val_data)
+
+        self.train_elbo.append(train_metrics["elbo"])
+        self.train_kl.append(0.1*train_metrics["kl"])
+        self.train_loglikelihood.append(train_metrics["nll"])
+        self.val_elbo.append(val_metrics["elbo"])
+        self.val_kl.append(0.1*val_metrics["kl"])
+        self.val_loglikelihood.append(val_metrics["nll"])
+
+        clear_output(wait=True)
+
+        fig, (ax1, ax2) = plt.subplots(2)
+        ax1.plot(range(1, len(self.train_elbo)+1), self.train_elbo, label="Train ELBO")
+        ax1.plot(range(1,len(self.train_kl)+1), self.train_kl, label="Train KL")
+        ax1.plot(range(1, len(self.train_loglikelihood)+1), self.train_loglikelihood, label="Train LogLike")
+        ax1.set_xlabel("Epochs")
+        ax1.set_title("Training metrics")
+        ax1.legend()
+        ax1.grid(True)
+
+        ax2.plot(range(1, len(self.val_elbo) + 1), self.val_elbo, label="Val ELBO")
+        ax2.plot(range(1, len(self.val_kl) + 1), self.val_kl, label="Val KL")
+        ax2.plot(range(1, len(self.val_loglikelihood) + 1), self.val_loglikelihood, label="Val LogLike")
+        ax2.set_xlabel("Epochs")
+        ax2.set_title("Validation metrics")
+
+        fig.tight_layout()
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+        print(f"Epoch {epoch + 1}:")
+        print(f"  Train ELBO: {train_metrics['elbo']:.4f}")
+        print(f"  Train NLL : {train_metrics['nll']:.4f}")
+        print(f"  Train KL  : {0.1 * train_metrics['kl']:.4f}")  # multiply if you used a weight in ELBO
+
+        print(f"  Val   ELBO: {val_metrics['elbo']:.4f}")
+        print(f"  Val   NLL : {val_metrics['nll']:.4f}")
+        print(f"  Val   KL  : {0.1 * val_metrics['kl']:.4f}")
+
+
 # INITIALIZING THE VAE
 vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
@@ -67,11 +126,11 @@ vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x) # Standard ELBO used for certain experiments
 
 vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
-            loss=negative_log_likelihood) #loss = custom_loss for uniform margins
+            loss=negative_log_likelihood) #loss = custom_loss for enforcing uniform margins
 
 # TRAINING THE VAE
 vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-        batch_size=32, epochs=100, callbacks=[LiveLossPlot()]) #150 epochs de base
+        batch_size=32, epochs=50, callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)]) #150 epochs de base
 
 #PLOT OF SAMPLED DATA
 N_samples = 8000

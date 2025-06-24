@@ -72,5 +72,17 @@ class Std_VAE_LogitNormal(tfk.Model):
         self.encoder = Std_Encoder_LogitNormal(latent_dim, LAYER_1_N, LAYER_2_N, KL_WEIGHT)
         self.decoder = Std_Decoder_LogitNormal(input_dim,LAYER_1_N, LAYER_2_N)
 
+
     def call(self, inputs):
         return self.decoder(self.encoder(inputs))
+
+    def get_metrics(self, x):
+        rv_x = self(x)
+        nll = -rv_x.log_prob(x)
+        kl = tf.reduce_mean(tfp.distributions.kl_divergence(self.encoder(x), self.encoder.prior))
+        elbo = tf.reduce_mean(nll + kl)
+        return {
+            "elbo": elbo.numpy(),
+            "nll": tf.reduce_mean(nll).numpy(),
+            "kl": kl.numpy()
+        }

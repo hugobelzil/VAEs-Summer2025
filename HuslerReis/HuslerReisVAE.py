@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Models.TruncatedNormalVAE import *
 from Models.LogitNormalVAE import *
+from Models.ProbitVAE import *
 from IPython.display import clear_output
 
 # IMPORTING SAMPLED DATA FROM HR COPULA
@@ -120,7 +121,7 @@ class LiveLossPlotELBOLogLikKl(tf.keras.callbacks.Callback):
 
 
 # INITIALIZING THE VAE
-vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
+vae = Std_VAE_Probit(latent_dim=12, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
 
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x) # Standard ELBO used for certain experiments
@@ -130,7 +131,10 @@ vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
 
 # TRAINING THE VAE
 vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-        batch_size=32, epochs=50, callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)]) #150 epochs de base
+        batch_size=32, epochs=300,
+        #callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)].
+        callbacks = [LiveLossPlotELBO()]
+        ) #150 epochs de base
 
 #PLOT OF SAMPLED DATA
 N_samples = 8000

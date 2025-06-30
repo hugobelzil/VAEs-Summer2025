@@ -9,6 +9,7 @@ tfpl = tfp.layers
 tfd = tfp.distributions
 
 
+
 # MULTIVARIATE GAUSSIAN ENCODER AND GAUSSIAN PRIOR
 
 class Std_Encoder_LogitNormal(tfk.Model):  # Encodeur
@@ -80,9 +81,10 @@ class Std_VAE_LogitNormal(tfk.Model):
         rv_x = self(x)
         nll = -rv_x.log_prob(x)
         kl = tf.reduce_mean(tfp.distributions.kl_divergence(self.encoder(x), self.encoder.prior))
-        elbo = tf.reduce_mean(nll + kl)
+        elbo = tf.reduce_mean(nll + 0.1*kl)
         return {
             "elbo": elbo.numpy(),
             "nll": tf.reduce_mean(nll).numpy(),
             "kl": kl.numpy()
         }
+

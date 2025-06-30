@@ -4,6 +4,9 @@ from Models.TruncatedNormalVAE import *
 from Models.LogitNormalVAE import *
 from Models.ProbitVAE import *
 from IPython.display import clear_output
+import tensorflow as tf
+from tensorflow.keras.callbacks import ModelCheckpoint
+
 
 # IMPORTING SAMPLED DATA FROM HR COPULA
 dataHR =  np.load('husler_reiss_samples.npy')
@@ -40,7 +43,7 @@ def uniformity_penalty(rv_x, n_samples=64):
 def custom_loss(x, rv_x):
     nll = -rv_x.log_prob(x)
     penalty = uniformity_penalty(rv_x, n_samples=64)
-    return nll + 0.001*penalty
+    return nll + 0.0001*penalty
 
 #DISPLAY FOR DYNAMIC PLOTTING OF ELBO
 class LiveLossPlotELBO(tf.keras.callbacks.Callback):
@@ -111,29 +114,35 @@ class LiveLossPlotELBOLogLikKl(tf.keras.callbacks.Callback):
         plt.tight_layout()
         plt.show()
         print(f"Epoch {epoch + 1}:")
-        print(f"  Train ELBO: {train_metrics['elbo']:.4f}")
-        print(f"  Train NLL : {train_metrics['nll']:.4f}")
-        print(f"  Train KL  : {0.1 * train_metrics['kl']:.4f}")  # multiply if you used a weight in ELBO
+        print(f"  Train ELBO: {train_metrics['elbo']:.5f}")
+        print(f"  Train NLL : {train_metrics['nll']:.5f}")
+        print(f"  Train KL  : {0.1 * train_metrics['kl']:.5f}")  # multiply if you used a weight in ELBO
 
-        print(f"  Val   ELBO: {val_metrics['elbo']:.4f}")
-        print(f"  Val   NLL : {val_metrics['nll']:.4f}")
-        print(f"  Val   KL  : {0.1 * val_metrics['kl']:.4f}")
+        print(f"  Val   ELBO: {val_metrics['elbo']:.5f}")
+        print(f"  Val   NLL : {val_metrics['nll']:.5f}")
+        print(f"  Val   KL  : {0.1 * val_metrics['kl']:.5f}")
 
+#CALLBACK TO SAVE THE BEST WEIGHTS
+best_model_callback = ModelCheckpoint(filepath = "best_model_LogitNormal.keras",
+                                      save_weights_only = False,
+                                      monitor = 'val_loss',
+                                      mode = 'min',
+                                      save_best_only = True)
 
 # INITIALIZING THE VAE
-vae = Std_VAE_Probit(latent_dim=12, input_dim = 2, LAYER_1_N=10,
+vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
 
-negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x) # Standard ELBO used for certain experiments
+negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x) # S
 
 vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
             loss=negative_log_likelihood) #loss = custom_loss for enforcing uniform margins
 
 # TRAINING THE VAE
 vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-        batch_size=32, epochs=300,
+        batch_size=32, epochs=750,
         #callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)].
-        callbacks = [LiveLossPlotELBO()]
+        callbacks = [LiveLossPlotELBO(),best_model_callback]
         ) #150 epochs de base
 
 #PLOT OF SAMPLED DATA

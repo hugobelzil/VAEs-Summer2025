@@ -55,3 +55,14 @@ class Std_VAE_Probit(tfk.Model):
 
     def call(self, inputs):
         return self.decoder(self.encoder(inputs))
+
+    def get_metrics(self, x):
+        rv_x = self(x)
+        nll = -rv_x.log_prob(x)
+        kl = tf.reduce_mean(tfp.distributions.kl_divergence(self.encoder(x), self.encoder.prior))
+        elbo = tf.reduce_mean(nll + 0.1*kl)
+        return {
+            "elbo": elbo.numpy(),
+            "nll": tf.reduce_mean(nll).numpy(),
+            "kl": kl.numpy()
+        }

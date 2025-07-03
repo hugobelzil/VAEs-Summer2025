@@ -40,10 +40,14 @@ def uniformity_penalty(rv_x, n_samples=64):
     return tf.reduce_sum(penalties.stack())
 
 # CUSTOM LOSS : LOG_LIKELIHOOD + UNIFORM PENALTY DEFINED ABOVE
-def custom_loss(x, rv_x):
-    nll = -rv_x.log_prob(x)
-    penalty = uniformity_penalty(rv_x, n_samples=64)
-    return nll + 0.0001*penalty
+
+def custom_loss(uniformity_weight=0.001):
+    def loss(x, rv_x):
+        nll = -rv_x.log_prob(x)
+        penalty = uniformity_penalty(rv_x, n_samples=64)
+        return nll + uniformity_weight * penalty
+    return loss
+
 
 #DISPLAY FOR DYNAMIC PLOTTING OF ELBO
 class LiveLossPlotELBO(tf.keras.callbacks.Callback):
@@ -138,31 +142,33 @@ negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x) # S
 vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
             loss=negative_log_likelihood) #loss = custom_loss for enforcing uniform margins
 
-# TRAINING THE VAE
-vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-        batch_size=32, epochs=750,
-        #callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)].
-        callbacks = [LiveLossPlotELBO(),best_model_callback]
-        ) #150 epochs de base
 
-#PLOT OF SAMPLED DATA
-N_samples = 8000
-prior_samples = vae.encoder.prior.sample(N_samples)
-samples_vae = vae.decoder(prior_samples).sample()
-plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')
-plt.title('Simulated data from a HR copula by the VAE')
-plt.show()
+if __name__== "__main__":
+    # TRAINING THE VAE
+    vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
+            batch_size=32, epochs=75,
+            #callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)].
+            callbacks = [LiveLossPlotELBO(),best_model_callback]
+            ) #150 epochs de base
 
-#PLOT OF THE MARGINS
-plot_margins = True
-
-if plot_margins:
-    plt.hist(samples_vae[:, 0], bins='auto', edgecolor='black', density=True)
-    plt.axline((0, 1), (1, 1), color='black')
-    plt.title('Histogram of first marginal Husler-Reis Samples')
+    #PLOT OF SAMPLED DATA
+    N_samples = 8000
+    prior_samples = vae.encoder.prior.sample(N_samples)
+    samples_vae = vae.decoder(prior_samples).sample()
+    plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')
+    plt.title('Simulated data from a HR copula by the VAE')
     plt.show()
 
-    plt.hist(samples_vae[:, 1], bins='auto', edgecolor='black', density=True)
-    plt.axline((0, 1), (1, 1), color='black')
-    plt.title('Histogram of second marginal Husler-Reis Samples')
-    plt.show()
+    #PLOT OF THE MARGINS
+    plot_margins = True
+
+    if plot_margins:
+        plt.hist(samples_vae[:, 0], bins='auto', edgecolor='black', density=True)
+        plt.axline((0, 1), (1, 1), color='black')
+        plt.title('Histogram of first marginal Husler-Reis Samples')
+        plt.show()
+
+        plt.hist(samples_vae[:, 1], bins='auto', edgecolor='black', density=True)
+        plt.axline((0, 1), (1, 1), color='black')
+        plt.title('Histogram of second marginal Husler-Reis Samples')
+        plt.show()

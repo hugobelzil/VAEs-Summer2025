@@ -7,6 +7,7 @@ from IPython.display import clear_output
 import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint
 
+#EXPERIENCE SCRIPT
 
 # IMPORTING SAMPLED DATA FROM HR COPULA
 dataHR =  np.load('husler_reiss_samples.npy')
@@ -136,32 +137,58 @@ best_model_callback = ModelCheckpoint(filepath = "best_model_LogitNormal_2",
                                       save_best_only = True)
 
 # INITIALIZING THE VAE
-vae = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
-                          LAYER_2_N = 12, KL_WEIGHT=0.1)
+vae_test = Std_VAE_LogitNormal(latent_dim=2, input_dim = 2, LAYER_1_N=10,
+                          LAYER_2_N = 12, KL_WEIGHT=1)
 
 
-vae.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
+vae_test.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
             loss=negative_log_likelihood) #loss = custom_loss for enforcing uniform margins
 
 
 if __name__== "__main__":
     # TRAINING THE VAE
-    vae.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-            batch_size=32, epochs=14,
+    vae_test.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
+            batch_size=32, epochs=50,
             #callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)].
             callbacks = [LiveLossPlotELBO(),best_model_callback]
             ) #150 epochs de base
 
+
     #PLOT OF SAMPLED DATA
     N_samples = 8000
-    prior_samples = vae.encoder.prior.sample(N_samples)
-    samples_vae = vae.decoder(prior_samples).sample()
+    prior_samples = vae_test.encoder.prior.sample(N_samples)
+    samples_vae = vae_test.decoder(prior_samples).sample()
     plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='x')
     plt.title('Simulated data from a HR copula by the VAE')
     plt.show()
 
+    # Estimate the means of the encoded training points using sampling
+    n_mc_samples = 100  # number of Monte Carlo samples per point
+    encoded_dists = vae_test.encoder(dataHR)  # get the distribution
+    samples = encoded_dists.sample(n_mc_samples).numpy()  # shape: (10, N, 2)
+    encoded_means = np.mean(samples, axis=0)  # shape: (N, 2)
+
+    # Plot the means in the 2D latent space
+    plt.figure(figsize=(6, 5))
+    plt.scatter(encoded_means[:, 0], encoded_means[:, 1], s=10, alpha=0.6, marker='o', color='royalblue')
+    plt.title('Means of Encoded Training Points (Latent Space)')
+    plt.xlabel('Latent dim 1')
+    plt.ylabel('Latent dim 2')
+    plt.grid(True)
+    plt.axis('equal')
+    plt.show()
+
+    plt.figure(figsize=(6, 5))
+    plt.scatter(encoded_means[:, 0], encoded_means[:, 1], s=5, alpha=0.4, marker='o', color='royalblue')
+    plt.title('Means of Encoded Training Points (Latent Space)')
+    plt.xlabel('Latent dim 1')
+    plt.ylabel('Latent dim 2')
+    plt.grid(True)
+    plt.axis('equal')
+    plt.show()
+
     #PLOT OF THE MARGINS
-    plot_margins = True
+    plot_margins = False
 
     if plot_margins:
         plt.hist(samples_vae[:, 0], bins=30, edgecolor='black', density=True)

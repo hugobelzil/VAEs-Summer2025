@@ -44,6 +44,15 @@ class Std_Encoder_LogitNormal(tfk.Model):  # Encodeur
         x = self.ind_logit_normal(x)
         return x
 
+    def encode_params(self, inputs):
+        """Returns loc and scale parameters before wrapping them in a distribution."""
+        x = self.dense1(inputs)
+        x = self.dense2(x)
+        x = self.dense3(x)
+        loc = x[..., :self.encoded_size]
+        scale = 1e-3 + tf.nn.softplus(x[..., self.encoded_size:])
+        return loc, scale
+
 class Std_Decoder_LogitNormal(tfk.Model):  # Décodeur
     def __init__(self, input_dim, LAYER_1_N, LAYER_2_N):
         super(Std_Decoder_LogitNormal, self).__init__()
@@ -57,6 +66,15 @@ class Std_Decoder_LogitNormal(tfk.Model):  # Décodeur
             reinterpreted_batch_ndims=1),
         name = 'logit_normal_output'
         )
+
+    def encode_params(self, inputs):
+        """Returns loc and scale parameters before wrapping them in a distribution."""
+        x = self.dense1(inputs)
+        x = self.dense2(x)
+        x = self.param_layer(x)
+        loc = x[..., :self.K]
+        scale = 1e-3 + tf.nn.softplus(x[..., self.K:])
+        return loc, scale
 
     def call(self, inputs):
         x = self.dense1(inputs)

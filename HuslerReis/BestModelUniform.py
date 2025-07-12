@@ -4,7 +4,6 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 negative_log_likelihood = lambda x, rv_x: -rv_x.log_prob(x)
-WEIGHT = 0.0001
 
 model = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
                           LAYER_2_N = 12, KL_WEIGHT=0.1)
@@ -12,7 +11,7 @@ model = Std_VAE_LogitNormal(latent_dim=12, input_dim = 2, LAYER_1_N=10,
 model.load_weights("best_model_LogitNormal")
 
 #PLOT OF SAMPLED DATA
-N_samples = 20000
+N_samples = 15000 #same number as training data
 prior_samples = model.encoder.prior.sample(N_samples)
 samples_vae = model.decoder(prior_samples).sample()
 plt.scatter(samples_vae[:,0],samples_vae[:,1], s=10, marker='o', alpha=0.2)
@@ -21,9 +20,9 @@ plt.show()
 
 #PLOTS WITH FEWER NUMBER OF SAMPLES
 n_samples_small = 150
-indices_1 = np.random.choice(eval_dataHR.shape[0], size=150)
-indices_2 = np.random.choice(eval_dataHR.shape[0], size=150)
-indices_3 = np.random.choice(eval_dataHR.shape[0], size=150)
+indices_1 = np.random.choice(eval_dataHR.shape[0], size=n_samples_small)
+indices_2 = np.random.choice(eval_dataHR.shape[0], size=n_samples_small)
+indices_3 = np.random.choice(eval_dataHR.shape[0], size=n_samples_small)
 
 samplehr_1 = eval_dataHR[indices_1]
 samplehr_2 = eval_dataHR[indices_2]
@@ -61,7 +60,7 @@ plt.show()
 
 
 #PLOT OF THE MARGINS
-plot_margins = False
+plot_margins = True
 
 if plot_margins:
     plt.hist(samples_vae[:, 0], bins='auto', edgecolor='white', color='#3B82F6', density=True)
@@ -77,3 +76,21 @@ if plot_margins:
 # MODEL RE-TRAINING : UNIFORMIZATION OF THE MARGINS
 # In this part below, we retrain the lowest validation loss achieving model
 # with the custom function added to the ELBO in order to enforce the uniformity of the margins
+UNIFORITY_WEIGHT = 0.0001
+
+if __name__ == '__main__':
+    model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
+            loss=custom_loss(uniformity_weight=UNIFORITY_WEIGHT))
+
+    model.fit(dataHR, dataHR, validation_data = (eval_dataHR, eval_dataHR),
+              batch_size = 32,
+              epochs = 2)
+
+    post_training_analysis = True
+
+    if post_training_analysis:
+        prior_samples = model.encoder.prior.sample(N_samples)
+        samples_vae = model.decoder(prior_samples).sample()
+        plt.scatter(samples_vae[:, 0], samples_vae[:, 1], s=10, marker='o', alpha=0.2)
+        plt.title(f'Simulated data from a HR copula by the VAE({N_samples} samples) AFTER uniformization')
+        plt.show()

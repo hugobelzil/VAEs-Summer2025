@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 # IMPORTING SAMPLED DATA FROM HR COPULA
 dataHR =  np.load('husler_reiss_samples.npy')
 eval_dataHR = np.load('husler_reiss_samples_eval.npy')
-plt.scatter(dataHR[:,0], dataHR[:,1], s=10, marker='x')
+plt.scatter(dataHR[:,0], dataHR[:,1], s=10, marker='o', alpha=0.2)
 plt.title('Husler-Reis Samples (Training data)')
 plt.show()
 

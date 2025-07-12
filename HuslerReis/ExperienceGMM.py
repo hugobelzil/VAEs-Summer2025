@@ -138,7 +138,7 @@ best_model_callback = ModelCheckpoint(filepath = "best_model_LogitNormal_2",
 
 # INITIALIZING THE VAE
 vae_test = Std_VAE_LogitNormal(latent_dim=2, input_dim = 2, LAYER_1_N=10,
-                          LAYER_2_N = 12, KL_WEIGHT=1)
+                          LAYER_2_N = 12, KL_WEIGHT=0.14)
 
 
 vae_test.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
@@ -148,7 +148,7 @@ vae_test.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
 if __name__== "__main__":
     # TRAINING THE VAE
     vae_test.fit(dataHR,dataHR, validation_data = (eval_dataHR, eval_dataHR),
-            batch_size=32, epochs=50,
+            batch_size=32, epochs=40,
             #callbacks=[LiveLossPlotELBOLogLikKl(train_data=dataHR, val_data=eval_dataHR)].
             callbacks = [LiveLossPlotELBO(),best_model_callback]
             ) #150 epochs de base

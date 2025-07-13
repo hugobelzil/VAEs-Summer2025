@@ -64,20 +64,23 @@ plt.show()
 plot_margins = True
 
 if plot_margins:
+    #Get KS statistic for each marginal
+    stat1, pv1 = kstest(samples_vae[:,0],'uniform')
     plt.hist(samples_vae[:, 0], bins='auto', edgecolor='white', color='#3B82F6', density=True)
     plt.axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
-    plt.title('Histogram of first marginal Husler-Reis Samples')
+    plt.title(f'Histogram of first marginal Husler-Reis Samples \n (KS Test p-value = {round(pv1,4)})')
     plt.show()
 
+    stat2, pv2 = kstest(samples_vae[:,1],'uniform')
     plt.hist(samples_vae[:, 1], bins='auto', edgecolor='white', color='#3B82F6', density=True)
     plt.axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
-    plt.title('Histogram of second marginal Husler-Reis Samples')
+    plt.title(f'Histogram of second marginal Husler-Reis Samples \n (KS Test p-value = {round(pv2,4)})')
     plt.show()
 
 # MODEL RE-TRAINING : UNIFORMIZATION OF THE MARGINS
 # In this part below, we retrain the lowest validation loss achieving model
 # with the custom function added to the ELBO in order to enforce the uniformity of the margins
-UNIFORMITY_WEIGHT = 10 #0.0001
+UNIFORMITY_WEIGHT = 0.002
 
 if __name__ == '__main__':
     model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=0.001),
@@ -85,29 +88,57 @@ if __name__ == '__main__':
 
     model.fit(dataHR, dataHR, validation_data = (eval_dataHR, eval_dataHR),
               batch_size = 32,
-              epochs = 30)
+              epochs = 20)
 
     print(f"Uniformization model has finished training with uniformity weight = {UNIFORMITY_WEIGHT}")
     post_training_analysis = True
 
     if post_training_analysis:
         prior_samples = model.encoder.prior.sample(N_samples)
-        samples_vae = model.decoder(prior_samples).sample()
-        plt.scatter(samples_vae[:, 0], samples_vae[:, 1], s=10, marker='o', alpha=0.2)
-        plt.title(f'Simulated data from a HR copula by the VAE({N_samples} samples) \n AFTER uniformization')
+        samples_vae_AU = model.decoder(prior_samples).sample()
+        plt.scatter(samples_vae_AU[:, 0], samples_vae_AU[:, 1], s=10, marker='o', alpha=0.2)
+        plt.title(f'Simulated data from a HR copula by the VAE({N_samples} samples) \n AFTER uniformization (Uniformity Weight = {UNIFORMITY_WEIGHT})')
         plt.show()
 
-        plt.hist(samples_vae[:, 0], bins='auto', edgecolor='white', color='#3B82F6', density=True)
+        statistic1, pvalue1 = kstest(samples_vae_AU[:, 0], 'uniform', N=2000)
+        plt.hist(samples_vae_AU[:, 0], bins='auto', edgecolor='white', color='#3B82F6', density=True)
         plt.axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
-        plt.title('Histogram of first marginal Husler-Reis Samples')
+        plt.title(f'Histogram of first marginal Husler-Reis Samples \n AFTER uniformization (KS Test p-value = {round(pvalue1,4)}), Uniformity Weight = {UNIFORMITY_WEIGHT}')
         plt.show()
 
-        plt.hist(samples_vae[:, 1], bins='auto', edgecolor='white', color='#3B82F6', density=True)
+        statistic2, pvalue2 = kstest(samples_vae_AU[:, 1], 'uniform', N=2000)
+        plt.hist(samples_vae_AU[:, 1], bins='auto', edgecolor='white', color='#3B82F6', density=True)
         plt.axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
-        plt.title('Histogram of second marginal Husler-Reis Samples')
+        plt.title(f'Histogram of second marginal Husler-Reis Samples \n AFTER uniformization (KS Test p-value = {round(pvalue2,4)}), Uniformity Weight = {UNIFORMITY_WEIGHT}')
         plt.show()
 
-    statistic1, pvalue1 = kstest(samples_vae[:,0],'uniform', N=2000)
-    statistic2, pvalue2 = kstest(samples_vae[:,1],'uniform', N=2000)
-    print(f"p-value of the KS test for margin 1 : {pvalue1}")
-    print(f"p-value of the KS test for margin 2 : {pvalue2}")
+        #COMPARISON OF MARGINS BEFORE AND AFTER UNIFORMIZATION
+        fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+
+        axs[0].hist(samples_vae[:, 0], bins='auto', edgecolor='white', color='#3B82F6', density=True)
+        axs[0].axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
+        axs[0].set_title(f"First margin before uniformization \n (KS p-value = {pv1})")
+
+        axs[1].hist(samples_vae_AU[:, 0], bins='auto', edgecolor='white', color='#3B82F6', density=True)
+        axs[1].axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
+        axs[1].set_title(f"First margin after uniformization \n (KS p-value = {pvalue1})")
+
+        fig.suptitle(f"Comparison of 1st margin before and after uniformization (Uniformity weight = {UNIFORMITY_WEIGHT})")
+        plt.tight_layout()
+        plt.show()
+
+        fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+
+        axs[0].hist(samples_vae[:, 1], bins='auto', edgecolor='white', color='#3B82F6', density=True)
+        axs[0].axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
+        axs[0].set_title(f"Second margin before uniformization \n (KS p-value = {pv2})")
+
+        axs[1].hist(samples_vae_AU[:, 1], bins='auto', edgecolor='white', color='#3B82F6', density=True)
+        axs[1].axline((0, 1), (1, 1), color='grey', linestyle='--', linewidth=1)
+        axs[1].set_title(f"Second margin after uniformization \n (KS p-value = {pvalue2})")
+
+        fig.suptitle(f"Comparison of 2nd margin before and after uniformization (Uniformity weight = {UNIFORMITY_WEIGHT})")
+        plt.tight_layout()
+        plt.show()
+
+
